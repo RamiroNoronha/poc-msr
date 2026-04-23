@@ -10,10 +10,10 @@ async def generate_report(
     repo_url: str,
     service: GitMiningService = Depends(get_git_mining_service)
 ):
-    data = service.process_gitlog(repo_url)
+    d3_data = service.get_d3_hierarchical_data(repo_url)
+
     return {
         "status": "success",
         "repo_analyzed": repo_url,
-        "total_commits": len(data),
-        "data": data
+        "d3_data": d3_data
     }
