@@ -1,28 +1,35 @@
 import subprocess
 import tempfile
-from typing import List, Tuple, Dict
+from typing import List, Optional, Tuple, Dict
 
 
 class NativeGitMiner:
 
-    def generate_gitlog_report(self, repo_url: str) -> Tuple[List[str], Dict[str, int]]:
+    def generate_gitlog_report(self, repo_url: str, branch: Optional[str] = None) -> Tuple[List[str], Dict[str, int]]:
         report = []
         file_sizes = {}
 
         with tempfile.TemporaryDirectory(prefix="repo-clone-") as temp_dir:
             try:
-                subprocess.run(['git', 'clone', '--bare', repo_url, temp_dir],
-                               check=True, capture_output=True)
+                clone_cmd = ['git', 'clone', '--bare', repo_url, temp_dir]
+                if branch:
+
+                    clone_cmd = ['git', 'clone', '--bare',
+                                 '--branch', branch, repo_url, temp_dir]
+
+                subprocess.run(clone_cmd, check=True, capture_output=True)
+
+                ref = branch if branch else 'HEAD'
 
                 result_log = subprocess.run(
-                    ['git', 'log', '--name-only',
+                    ['git', 'log', ref, '--name-only',
                         '--format=COMMIT|%H|%an|%ad|%s', '--date=iso'],
                     cwd=temp_dir, check=True, capture_output=True, text=True
                 )
                 report = result_log.stdout.splitlines()
 
                 result_ls = subprocess.run(
-                    ['git', 'ls-tree', '--name-only', '-r', 'HEAD'],
+                    ['git', 'ls-tree', '--name-only', '-r', ref],
                     cwd=temp_dir, check=True, capture_output=True, text=True
                 )
                 files = result_ls.stdout.splitlines()
@@ -30,7 +37,7 @@ class NativeGitMiner:
                 for file_path in files:
                     try:
                         result_show = subprocess.run(
-                            ['git', 'show', f'HEAD:{file_path}'],
+                            ['git', 'show', f'{ref}:{file_path}'],
                             cwd=temp_dir, capture_output=True, check=True
                         )
 

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 from collections import Counter
 from .contracts import GitMinerProtocol
 
@@ -8,9 +8,9 @@ class GitMiningService:
         self.miner = miner
         self.size_fall_back = 10
 
-    def process_gitlog(self, clone_url: str) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    def process_gitlog(self, clone_url: str, branch: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
         raw_log_lines, file_sizes = self.miner.generate_gitlog_report(
-            clone_url)
+            clone_url, branch)
 
         parsed_commits = []
         current_commit = None
@@ -36,8 +36,8 @@ class GitMiningService:
 
         return parsed_commits, file_sizes
 
-    def get_d3_hierarchical_data(self, clone_url: str) -> Dict[str, Any]:
-        commits, file_sizes = self.process_gitlog(clone_url)
+    def get_d3_hierarchical_data(self, clone_url: str, branch: Optional[str] = None) -> Dict[str, Any]:
+        commits, file_sizes = self.process_gitlog(clone_url, branch)
 
         file_revisions = Counter()
         for commit in commits:
@@ -81,3 +81,20 @@ class GitMiningService:
                         current_level = new_dir
 
         return root
+
+    def get_author_d3_hierarchical_data(self, clone_url: str, author_name: str, branch: Optional[str] = None) -> Dict[str, Any]:
+        commits, file_sizes = self.process_gitlog(clone_url, branch)
+
+        filtered_commits = [
+            c for c in commits
+            if c["author"].lower() == author_name.lower()
+        ]
+
+        file_revisions = Counter()
+        for commit in filtered_commits:
+            for file_path in commit["files_touched"]:
+                file_revisions[file_path] += 1
+
+        max_revisions = max(file_revisions.values()) if file_revisions else 1
+
+        return self._build_d3_hierarchy(file_revisions, max_revisions, file_sizes)
