@@ -22,7 +22,7 @@ class NativeGitMiner:
                 ref = branch if branch else 'HEAD'
 
                 result_log = subprocess.run(
-                    ['git', 'log', ref, '--name-only',
+                    ['git', 'log', ref, '--reverse', '--name-only',
                         '--format=COMMIT|%H|%an|%ad|%s', '--date=iso'],
                     cwd=temp_dir, check=True, capture_output=True, text=True
                 )
