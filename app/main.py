@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.api.v1.github import router as github_router
 from app.domains.git_mining.router import router as git_mining_router
+from app.domains.truck_factor.router import router as truck_factor_router
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
@@ -30,7 +31,8 @@ app.include_router(
     tags=["git-mining"]
 )
 
-
-@app.get("/", tags=["health"])
-def read_root():
-    return {"status": "online", "project": settings.PROJECT_NAME}
+app.include_router(
+    truck_factor_router,
+    prefix=f"{settings.API_V1_STR}/analytics",
+    tags=["truck-factor"]
+)
