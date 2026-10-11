@@ -1,6 +1,7 @@
 from typing import Optional
 from .dependencies import get_truck_factor_service
 from fastapi import APIRouter, Depends
+from app.domains.git_mining.schemas import AnalysisRequest
 from .service import TruckFactorService
 
 router = APIRouter()
@@ -24,3 +25,12 @@ async def generate_truck_factor_report(
         The simulated payload results object.
     """
     return service.get_truck_factor_report(repo_url, branch)
+
+
+@router.post("/report/truck-factor")
+async def generate_truck_factor_report_with_groups(
+    request: AnalysisRequest,
+    service: TruckFactorService = Depends(get_truck_factor_service)
+):
+    """Same as the GET report, using identity groups confirmed by the user."""
+    return service.get_truck_factor_report(request.repo_url, request.branch, request.groups)
