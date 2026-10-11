@@ -122,8 +122,14 @@ class TruckFactorService:
             "key_developers": key_developers
         }
 
-    def get_truck_factor_report(self, repo_url: str, branch: Optional[str] = None) -> Dict[str, Any]:
-        commits, _ = self.git_mining_service.process_gitlog(repo_url, branch)
+    def get_truck_factor_report(
+        self,
+        repo_url: str,
+        branch: Optional[str] = None,
+        groups: Optional[List[List[str]]] = None
+    ) -> Dict[str, Any]:
+        commits, _ = self.git_mining_service.process_gitlog(
+            repo_url, branch, groups)
         doa_matrix = self.calculate_system_authorship(commits)
         ownership_map = self.determine_principal_authors(doa_matrix)
         result = self.calculate_truck_factor(ownership_map)
