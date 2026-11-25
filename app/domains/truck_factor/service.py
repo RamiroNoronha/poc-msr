@@ -122,14 +122,37 @@ class TruckFactorService:
             "key_developers": key_developers
         }
 
+    @staticmethod
+    def filter_files(
+        commits: List[Dict[str, Any]],
+        current_files: Set[str],
+        excluded_paths: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Mantém só arquivos que existem hoje (como em Avelino et al.) e fora das pastas excluídas.
+
+        Os commits continuam todos na lista (a ordem define o primeiro autor); só os arquivos são filtrados.
+        """
+        prefixes = tuple(f"{path.strip('/')}/" for path in excluded_paths if path.strip('/'))
+
+        def keep(path: str) -> bool:
+            return path in current_files and not path.startswith(prefixes)
+
+        return [
+            {**commit, "files_touched": [f for f in commit["files_touched"] if keep(f)]}
+            for commit in commits
+        ]
+
     def get_truck_factor_report(
         self,
         repo_url: str,
         branch: Optional[str] = None,
-        groups: Optional[List[List[str]]] = None
+        groups: Optional[List[List[str]]] = None,
+        excluded_paths: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        commits, _ = self.git_mining_service.process_gitlog(
+        commits, file_sizes = self.git_mining_service.process_gitlog(
             repo_url, branch, groups)
+        commits = self.filter_files(
+            commits, set(file_sizes), excluded_paths or [])
         doa_matrix = self.calculate_system_authorship(commits)
         ownership_map = self.determine_principal_authors(doa_matrix)
         result = self.calculate_truck_factor(ownership_map)

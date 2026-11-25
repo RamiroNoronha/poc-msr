@@ -52,7 +52,8 @@ class NativeGitMiner:
                 ref = branch if branch else 'HEAD'
 
                 result_log = subprocess.run(
-                    ['git', 'log', ref, '--reverse', '--name-only',
+                    # --name-status -M: status de cada arquivo e detecção de renomeações (R<similaridade>).
+                    ['git', 'log', ref, '--reverse', '--name-status', '-M',
                         '--format=COMMIT|%H|%an|%ae|%ad|%s', '--date=iso'],
                     cwd=temp_dir, check=True, capture_output=True, text=True
                 )

@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from collections import Counter
 from .contracts import GitMinerProtocol
 from .identity import build_identity_map, identity_id, list_developers, suggest_groups
+from .renames import Change, parse_name_status, resolve_renames
 
 
 class GitMiningService:
@@ -19,11 +20,11 @@ class GitMiningService:
             clone_url, branch)
 
         parsed_commits = []
+        commits_changes: List[List[Change]] = []
         current_commit = None
 
         for line in raw_log_lines:
-            line = line.strip()
-            if not line:
+            if not line.strip():
                 continue
 
             if line.startswith("COMMIT|"):
@@ -37,9 +38,16 @@ class GitMiningService:
                     "files_touched": []
                 }
                 parsed_commits.append(current_commit)
+                commits_changes.append([])
 
             elif current_commit is not None:
-                current_commit["files_touched"].append(line)
+                change = parse_name_status(line)
+                if change:
+                    commits_changes[-1].append(change)
+
+        # Renomeações: o histórico de um caminho antigo passa a contar para o caminho atual do arquivo.
+        for commit, files in zip(parsed_commits, resolve_renames(commits_changes)):
+            commit["files_touched"] = files
 
         if groups:
             identity_map = build_identity_map(parsed_commits, groups)

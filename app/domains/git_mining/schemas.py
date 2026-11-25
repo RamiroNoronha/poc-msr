@@ -8,3 +8,5 @@ class AnalysisRequest(BaseModel):
     branch: Optional[str] = None
     # Cada grupo lista os ids ("Nome <email>") de identidades que são a mesma pessoa.
     groups: List[List[str]] = Field(default_factory=list)
+    # Pastas (caminhos a partir da raiz, sem "/" no fim) cujos arquivos ficam fora do cálculo.
+    excluded_paths: List[str] = Field(default_factory=list)

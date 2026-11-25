@@ -33,4 +33,4 @@ async def generate_truck_factor_report_with_groups(
     service: TruckFactorService = Depends(get_truck_factor_service)
 ):
     """Same as the GET report, using identity groups confirmed by the user."""
-    return service.get_truck_factor_report(request.repo_url, request.branch, request.groups)
+    return service.get_truck_factor_report(request.repo_url, request.branch, request.groups, request.excluded_paths)
