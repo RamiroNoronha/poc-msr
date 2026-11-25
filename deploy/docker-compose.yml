@@ -1,0 +1,35 @@
+# Sobe front (Caddy + build do Vite) e backend numa máquina só.
+# Espera os dois repositórios lado a lado:
+#   ~/poc-msr        (este repositório)
+#   ~/poc-msr-front
+# Uso: cd ~/poc-msr/deploy && cp .env.example .env && (edite o .env) && docker compose up -d --build
+services:
+  backend:
+    build: ..
+    restart: unless-stopped
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?defina GITHUB_TOKEN no .env}
+      CORS_ORIGINS: https://${SITE_ADDRESS:-localhost}
+      MAX_REPO_SIZE_MB: ${MAX_REPO_SIZE_MB:-500}
+      GIT_TIMEOUT_SECONDS: ${GIT_TIMEOUT_SECONDS:-600}
+    # Só o Caddy fala com o backend; a porta 8000 não fica exposta na internet.
+    expose:
+      - "8000"
+
+  web:
+    build: ../../poc-msr-front
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

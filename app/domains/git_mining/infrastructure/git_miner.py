@@ -4,6 +4,9 @@ import threading
 import time
 from typing import List, Optional, Tuple, Dict
 
+from app.core.config import settings
+from app.domains.git_mining.repository_guard import RepositoryRejected, ensure_repository_allowed, parse_github_url
+
 GitLogReport = Tuple[List[str], Dict[str, int]]
 
 CACHE_TTL_SECONDS = 600
@@ -18,14 +21,23 @@ _cache_lock = threading.Lock()
 class NativeGitMiner:
 
     def generate_gitlog_report(self, repo_url: str, branch: Optional[str] = None) -> GitLogReport:
-        key = (repo_url, branch)
+        # Validar a URL é barato; a consulta de tamanho ao GitHub só acontece quando não há cache.
+        owner, repo = parse_github_url(repo_url)
+        if branch is not None and (not branch.strip() or branch.startswith("-")):
+            raise RepositoryRejected("Nome de branch inválido.")
+        key = (f"{owner}/{repo}".lower(), branch)
 
         with _cache_lock:
             cached = _cache.get(key)
             if cached and time.monotonic() - cached[0] < CACHE_TTL_SECONDS:
                 return cached[1]
 
-            result, succeeded = self._mine_repository(repo_url, branch)
+            clone_url = ensure_repository_allowed(repo_url)
+            try:
+                result, succeeded = self._mine_repository(clone_url, branch)
+            except subprocess.TimeoutExpired as error:
+                raise RepositoryRejected(
+                    "A análise deste repositório passou do tempo limite. Tente um repositório menor.", 504) from error
 
             if succeeded:
                 _cache[key] = (time.monotonic(), result)
@@ -47,7 +59,8 @@ class NativeGitMiner:
                     clone_cmd = ['git', 'clone', '--bare',
                                  '--branch', branch, repo_url, temp_dir]
 
-                subprocess.run(clone_cmd, check=True, capture_output=True)
+                subprocess.run(clone_cmd, check=True, capture_output=True,
+                               timeout=settings.GIT_TIMEOUT_SECONDS)
 
                 ref = branch if branch else 'HEAD'
 
@@ -55,7 +68,8 @@ class NativeGitMiner:
                     # --name-status -M: status de cada arquivo e detecção de renomeações (R<similaridade>).
                     ['git', 'log', ref, '--reverse', '--name-status', '-M',
                         '--format=COMMIT|%H|%an|%ae|%ad|%s', '--date=iso'],
-                    cwd=temp_dir, check=True, capture_output=True, text=True
+                    cwd=temp_dir, check=True, capture_output=True, text=True,
+                    timeout=settings.GIT_TIMEOUT_SECONDS
                 )
                 report = result_log.stdout.splitlines()
 

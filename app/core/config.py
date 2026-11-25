@@ -9,6 +9,11 @@ class Settings(BaseSettings):
 
     GITHUB_TOKEN: str = Field(..., validation_alias="GITHUB_TOKEN")
     GITHUB_API_URL: str = "https://api.github.com"
+    CORS_ORIGINS: str = "http://localhost:5173"
+
+    # Limites para expor o backend publicamente.
+    MAX_REPO_SIZE_MB: int = 500
+    GIT_TIMEOUT_SECONDS: int = 600
 
     model_config = SettingsConfigDict(
         env_file=".env",
